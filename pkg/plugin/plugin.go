@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"sync"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/grafana/grafana-plugin-sdk-go/live"
+	"github.com/grafana/grafana-starter-datasource-backend/pkg/models"
 )
 
 // Make sure WebSocketDataSource implements required interfaces. This is important to do
@@ -29,24 +31,32 @@ var (
 	_ instancemgmt.InstanceDisposer = (*WebSocketDataSource)(nil)
 )
 
+type channelConfig struct {
+	path        string
+	queryParams map[string]string
+}
+
 // NewWebSocketDataSource creates a new datasource instance.
-func NewWebSocketDataSource(ds backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-	customSettings, err := NewCustomSettings(ds.JSONData, ds.DecryptedSecureJSONData)
+func NewWebSocketDataSource(_ context.Context, ds backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+	settings, err := models.LoadPluginSettings(ds)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CustomSettings from the Query Request: %s", err.Error())
 	}
 
 	return &WebSocketDataSource{
-		customHeaders:         customSettings.headers,
-		customQueryParameters: customSettings.queryParameters,
+		customHeaders:         settings.Headers,
+		customQueryParameters: settings.QueryParameters,
+		channelConfigs:        map[string]channelConfig{},
 	}, nil
 }
 
 // WebSocketDataSource is an example datasource which can respond to data queries, reports
 // its health and has streaming skills.
 type WebSocketDataSource struct {
-	customHeaders         settings
-	customQueryParameters settings
+	customHeaders         map[string]string
+	customQueryParameters map[string]string
+	channelConfigs        map[string]channelConfig
+	mu                    sync.RWMutex
 }
 
 // Dispose here tells plugin SDK that plugin wants to clean up resources when a new instance
@@ -78,8 +88,8 @@ func (wsds *WebSocketDataSource) QueryData(ctx context.Context, req *backend.Que
 }
 
 type queryModel struct {
-	WithStreaming bool   `json:"withStreaming"`
-	WsPath        string `json:"path"`
+	WsPath      string            `json:"path"`
+	QueryParams map[string]string `json:"queryParams"`
 }
 
 func (wsds *WebSocketDataSource) query(_ context.Context, pCtx backend.PluginContext, query backend.DataQuery) backend.DataResponse {
@@ -101,11 +111,12 @@ func (wsds *WebSocketDataSource) query(_ context.Context, pCtx backend.PluginCon
 	channel := live.Channel{
 		Scope:     live.ScopeDatasource,
 		Namespace: pCtx.DataSourceInstanceSettings.UID,
-		Path:      path.Clean(qm.WsPath),
+		Path:      path.Join(path.Clean(qm.WsPath), query.RefID),
 	}
 	frame.SetMeta(&data.FrameMeta{Channel: channel.String()})
 	// add the frames to the response.
 	response.Frames = append(response.Frames, frame)
+	wsds.setChannelConfig(channel.Path, qm.WsPath, wsds.mergeQueryParams(qm.QueryParams))
 
 	return response
 }
@@ -176,7 +187,15 @@ func (wsds *WebSocketDataSource) SubscribeStream(_ context.Context, req *backend
 func (wsds *WebSocketDataSource) RunStream(ctx context.Context, req *backend.RunStreamRequest, sender *backend.StreamSender) error {
 	log.DefaultLogger.Info("RunStream called", "Path", req.Path)
 
-	wsDataProxy, err := NewWsDataProxy(req, sender, wsds)
+	cfg, ok := wsds.getChannelConfig(req.Path)
+	if !ok {
+		err := fmt.Errorf("no channel config found for %s", req.Path)
+		log.DefaultLogger.Error("RunStream config missing", "path", req.Path, "error", err)
+		sendErrorFrame(err.Error(), sender)
+		return err
+	}
+
+	wsDataProxy, err := NewWsDataProxy(req, sender, wsds, cfg)
 	if err != nil {
 		errCtx := "Starting WebSocket"
 
@@ -215,4 +234,31 @@ func (wsds *WebSocketDataSource) PublishStream(_ context.Context, req *backend.P
 	return &backend.PublishStreamResponse{
 		Status: backend.PublishStreamStatusPermissionDenied,
 	}, nil
+}
+
+func (wsds *WebSocketDataSource) mergeQueryParams(queryParams map[string]string) map[string]string {
+	merged := map[string]string{}
+	for k, v := range wsds.customQueryParameters {
+		merged[k] = v
+	}
+	for k, v := range queryParams {
+		merged[k] = v
+	}
+	return merged
+}
+
+func (wsds *WebSocketDataSource) setChannelConfig(channelPath string, basePath string, params map[string]string) {
+	wsds.mu.Lock()
+	defer wsds.mu.Unlock()
+	wsds.channelConfigs[channelPath] = channelConfig{
+		path:        basePath,
+		queryParams: params,
+	}
+}
+
+func (wsds *WebSocketDataSource) getChannelConfig(channelPath string) (channelConfig, bool) {
+	wsds.mu.RLock()
+	defer wsds.mu.RUnlock()
+	cfg, ok := wsds.channelConfigs[channelPath]
+	return cfg, ok
 }

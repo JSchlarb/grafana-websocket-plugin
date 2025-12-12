@@ -1,4 +1,4 @@
-import { BracesPlugin, QueryField, SlatePrism } from '@grafana/ui'
+import { Input } from '@grafana/ui'
 import { useDebounce } from 'hooks/useDebounce'
 import React, { useEffect, useState } from 'react'
 
@@ -22,29 +22,13 @@ export const JsonPathField: React.FC<Props> = ({ jsonPath, onChange }) => {
     onChange(debouncedValue || '')
   }, [debouncedValue, jsonPath, onChange])
 
-  /**
-   * The QueryField supports Slate plugins, so let's add a few useful ones.
-   */
-  const plugins = [
-    BracesPlugin(),
-    SlatePrism({
-      onlyIn: node => node.type === 'code_block',
-      getSyntax: () => 'js',
-    }),
-  ]
-
-  // This is important if you don't want punctuation to interfere with your suggestions.
-  const cleanText = (s: string) =>
-    s.replace(/[{}[\]="(),!~+\-*/^%\|\$@\.]/g, '').trim()
-
   return (
-    <QueryField
-      additionalPlugins={plugins}
-      query={value}
-      cleanText={cleanText}
-      onChange={v => setValue(v)}
-      portalOrigin='wsapi'
+    <Input
+      value={value}
+      onChange={e => setValue(e.currentTarget.value)}
+      onBlur={() => onChange(value || '')}
       placeholder='$.items[*].name'
+      aria-label='JsonPath editor'
     />
   )
 }

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { FieldType } from '@grafana/data'
 import dayjs from 'dayjs'
 
@@ -13,9 +12,7 @@ export const detectFieldType = (values: any[]): FieldType => {
   }
 
   // If all values are valid ISO 8601, then assume that it's a time field.
-  const isValidISO = values
-    .filter(value => value !== null)
-    .every(value => value.length >= 10 && dayjs(value).isValid())
+  const isValidISO = values.filter(value => value !== null).every(value => value.length >= 10 && dayjs(value).isValid())
   if (isValidISO) {
     return FieldType.time
   }

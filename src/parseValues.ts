@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { FieldType } from '@grafana/data'
 import dayjs from 'dayjs'
 
@@ -41,9 +40,7 @@ export const parseValues = (values: any[], type: FieldType): any[] => {
             }
           })
     case FieldType.number:
-      return values.every(_ => typeof _ === 'number')
-        ? values
-        : values.map(_ => (_ !== null ? parseFloat(_) : _))
+      return values.every(_ => typeof _ === 'number') ? values : values.map(_ => (_ !== null ? parseFloat(_) : _))
     case FieldType.boolean:
       return values.every(_ => typeof _ === 'boolean')
         ? values
@@ -64,10 +61,7 @@ export const parseValues = (values: any[], type: FieldType): any[] => {
               case 'True':
                 return 1
               default:
-                throw new Error(
-                  'Found non-boolean values in a field of type boolean: ' +
-                    _.toString(),
-                )
+                throw new Error('Found non-boolean values in a field of type boolean: ' + _.toString())
             }
           })
     default:

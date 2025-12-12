@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/grafana/grafana/master/docs/sources/developers/plugins/plugin.schema.json",
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
   "type": "datasource",
   "name": "WebSocket API",
   "id": "golioth-websocket-datasource",
@@ -42,12 +42,11 @@
         "path": "img/assets/grafana-websockets-plugin-streaming.png"
       }
     ],
-    "version": "1.1.0",
+    "version": "%VERSION%",
     "updated": "%TODAY%"
   },
   "dependencies": {
-    "grafanaDependency": ">=8.3.0",
-    "grafanaVersion": "8.3.0",
+    "grafanaDependency": ">=10.4.0",
     "plugins": []
   }
 }

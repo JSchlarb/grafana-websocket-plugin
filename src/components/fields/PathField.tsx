@@ -22,9 +22,9 @@ export const PathField: React.FC<Props> = ({ path, onChange }) => {
   return (
     <Input
       value={value}
-      label='Path'
       placeholder='/api/v1/ws/realtime'
       onChange={e => setValue(e.currentTarget.value)}
+      style={{ width: '100%' }}
     />
   )
 }

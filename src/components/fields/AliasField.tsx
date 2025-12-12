@@ -19,11 +19,5 @@ export const AliasField: React.FC<Props> = ({ alias, onChange }) => {
     onChange(debouncedValue || '')
   }, [debouncedValue, alias, onChange])
 
-  return (
-    <Input
-      width={12}
-      value={value}
-      onChange={e => setValue(e.currentTarget.value)}
-    />
-  )
+  return <Input width={12} value={value} onChange={e => setValue(e.currentTarget.value)} />
 }

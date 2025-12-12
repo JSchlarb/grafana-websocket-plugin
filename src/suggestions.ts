@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { TypeaheadInput, TypeaheadOutput } from '@grafana/ui'
 import { JSONPath } from 'jsonpath-plus'
 
@@ -11,10 +10,7 @@ import { JSONPath } from 'jsonpath-plus'
  * The onData provides the source data used when generating the suggestions.
  * This makes it easier to test the suggestions logic.
  */
-export const onSuggest = async (
-  input: TypeaheadInput,
-  onData: () => Promise<any>,
-): Promise<TypeaheadOutput> => {
+export const onSuggest = async (input: TypeaheadInput, onData: () => Promise<any>): Promise<TypeaheadOutput> => {
   const { value } = input
 
   const emptyResult: TypeaheadOutput = { suggestions: [] }
@@ -24,8 +20,7 @@ export const onSuggest = async (
   }
 
   const selectedLines = value.document.getTextsAtRange(value.selection)
-  const currentLine =
-    selectedLines.size === 1 ? selectedLines.first().getText() : null
+  const currentLine = selectedLines.size === 1 ? selectedLines.first().getText() : null
 
   if (!currentLine) {
     return emptyResult

@@ -1,10 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { css } from '@emotion/css'
 import { DataSourceSettings } from '@grafana/data'
-import { Button, Icon, LegacyForms, stylesFactory } from '@grafana/ui'
+import { Button, Icon, InlineField, Input, SecretInput } from '@grafana/ui'
 import { uniqueId } from 'lodash'
 import React, { PureComponent } from 'react'
-const { SecretFormField, FormField } = LegacyForms
 
 export interface CustomQueryParam {
   id: string
@@ -32,24 +30,20 @@ interface CustomQueryParamRowProps {
   onBlur: () => void
 }
 
-const getCustomQueryParamRowStyles = stylesFactory(() => {
-  return {
-    layout: css`
-      display: flex;
-      align-items: center;
-      margin-bottom: 4px;
-      > * {
-        margin-left: 4px;
-        margin-bottom: 0;
-        height: 100%;
-        &:first-child,
-        &:last-child {
-          margin-left: 0;
-        }
-      }
-    `,
+const queryParamRowLayout = css`
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+  > * {
+    margin-left: 4px;
+    margin-bottom: 0;
+    height: 100%;
+    &:first-child,
+    &:last-child {
+      margin-left: 0;
+    }
   }
-})
+`
 
 const CustomQueryParamRow: React.FC<CustomQueryParamRowProps> = ({
   queryParam,
@@ -58,31 +52,27 @@ const CustomQueryParamRow: React.FC<CustomQueryParamRowProps> = ({
   onRemove,
   onReset,
 }) => {
-  const styles = getCustomQueryParamRowStyles()
   return (
-    <div className={styles.layout}>
-      <FormField
-        label='Key'
-        name='name'
-        placeholder='apiKey'
-        labelWidth={8}
-        value={queryParam.name || ''}
-        onChange={e => onChange({ ...queryParam, name: e.target.value })}
-        onBlur={onBlur}
-      />
-      <SecretFormField
-        label='Value'
-        aria-label='Value'
-        name='value'
-        isConfigured={queryParam.configured}
-        value={queryParam.value}
-        labelWidth={5}
-        inputWidth={queryParam.configured ? 11 : 12}
-        placeholder='apiKeyValuexrCzlMqi6vJwlM5ijRgFL'
-        onReset={() => onReset(queryParam.id)}
-        onChange={e => onChange({ ...queryParam, value: e.target.value })}
-        onBlur={onBlur}
-      />
+    <div className={queryParamRowLayout}>
+      <InlineField label='Key' labelWidth={8} grow>
+        <Input
+          value={queryParam.name || ''}
+          placeholder='apiKey'
+          onChange={e => onChange({ ...queryParam, name: e.currentTarget.value })}
+          onBlur={onBlur}
+        />
+      </InlineField>
+      <InlineField label='Value' labelWidth={5} grow>
+        <SecretInput
+          isConfigured={queryParam.configured}
+          value={queryParam.value}
+          width={queryParam.configured ? 11 : 12}
+          placeholder='apiKeyValuexrCzlMqi6vJwlM5ijRgFL'
+          onReset={() => onReset(queryParam.id)}
+          onChange={e => onChange({ ...queryParam, value: e.currentTarget.value })}
+          onBlur={onBlur}
+        />
+      </InlineField>
       <Button
         type='button'
         aria-label='Remove queryParam'
@@ -105,8 +95,7 @@ export class CustomQueryParamsSettings extends PureComponent<Props, State> {
 
   constructor(props: Props) {
     super(props)
-    const { jsonData, secureJsonData, secureJsonFields } =
-      this.props.dataSourceConfig
+    const { jsonData, secureJsonData, secureJsonFields } = this.props.dataSourceConfig
     this.state = {
       queryParams: Object.keys(jsonData)
         .sort()
@@ -116,10 +105,7 @@ export class CustomQueryParamsSettings extends PureComponent<Props, State> {
             id: uniqueId(),
             name: jsonData[key],
             value: secureJsonData !== undefined ? secureJsonData[key] : '',
-            configured:
-              (secureJsonFields &&
-                secureJsonFields[`queryParamValue${index + 1}`]) ||
-              false,
+            configured: (secureJsonFields && secureJsonFields[`queryParamValue${index + 1}`]) || false,
           }
         }),
     }
@@ -130,9 +116,7 @@ export class CustomQueryParamsSettings extends PureComponent<Props, State> {
 
     // we remove every queryParamName* field
     const newJsonData = Object.fromEntries(
-      Object.entries(this.props.dataSourceConfig.jsonData).filter(
-        ([key]) => !key.startsWith('queryParamName'),
-      ),
+      Object.entries(this.props.dataSourceConfig.jsonData).filter(([key]) => !key.startsWith('queryParamName')),
     )
 
     // we remove every queryParamValue* field
@@ -160,10 +144,7 @@ export class CustomQueryParamsSettings extends PureComponent<Props, State> {
   onQueryParamAdd = () => {
     this.setState(prevState => {
       return {
-        queryParams: [
-          ...prevState.queryParams,
-          { id: uniqueId(), name: '', value: '', configured: false },
-        ],
+        queryParams: [...prevState.queryParams, { id: uniqueId(), name: '', value: '', configured: false }],
       }
     })
   }

@@ -4,10 +4,10 @@ make clean-build:
 	rm node_modules
 
 setup-frontend:
-	yarn install
+	npm install
 
 build-frontend:
-	yarn build
+	npm run build
 
 install-mage:
 	go install github.com/magefile/mage

@@ -1,11 +1,9 @@
 import { DataSourcePluginOptionsEditorProps } from '@grafana/data'
-import { LegacyForms } from '@grafana/ui'
+import { InlineField, Input } from '@grafana/ui'
 import React, { ChangeEvent, FC } from 'react'
 import { DataSourceOptions } from '../types'
 import CustomHeadersSettings from './fields/CustomHeadersField'
 import CustomQueryParamsSettings from './fields/CustomQueryParamsField'
-
-const { FormField } = LegacyForms
 
 type Props = DataSourcePluginOptionsEditorProps<DataSourceOptions>
 
@@ -15,7 +13,7 @@ export const ConfigEditor: FC<Props> = ({ options, onOptionsChange }) => {
   const onHostChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newOptions = {
       ...options,
-      url: event.target.value,
+      url: event.currentTarget.value,
     }
     onOptionsChange({ ...newOptions, jsonData })
   }
@@ -24,27 +22,19 @@ export const ConfigEditor: FC<Props> = ({ options, onOptionsChange }) => {
     <div className='gf-form-group'>
       <h3 className='page-heading'>WebSocket</h3>
       <div className='gf-form-group'>
-        <div className='gf-form'>
-          <FormField
-            label='Host'
-            labelWidth={10}
-            inputWidth={30}
+        <InlineField label='Host' labelWidth={10} grow>
+          <Input
+            id='config-editor-host'
             onChange={onHostChange}
             value={url || ''}
             placeholder='wss://api.domain.io/v1/ws/'
+            width={30}
           />
-        </div>
+        </InlineField>
       </div>
 
-      <CustomHeadersSettings
-        dataSourceConfig={options}
-        onChange={onOptionsChange}
-      />
-
-      <CustomQueryParamsSettings
-        dataSourceConfig={options}
-        onChange={onOptionsChange}
-      />
+      <CustomHeadersSettings dataSourceConfig={options} onChange={onOptionsChange} />
+      <CustomQueryParamsSettings dataSourceConfig={options} onChange={onOptionsChange} />
     </div>
   )
 }

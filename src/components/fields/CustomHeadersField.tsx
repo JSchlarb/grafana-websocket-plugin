@@ -1,10 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { css } from '@emotion/css'
 import { DataSourceSettings } from '@grafana/data'
-import { Button, Icon, LegacyForms, stylesFactory } from '@grafana/ui'
+import { Button, Icon, InlineField, Input, SecretInput } from '@grafana/ui'
 import { uniqueId } from 'lodash'
 import React, { PureComponent } from 'react'
-const { SecretFormField, FormField } = LegacyForms
 
 export interface CustomHeader {
   id: string
@@ -32,57 +30,43 @@ interface CustomHeaderRowProps {
   onBlur: () => void
 }
 
-const getCustomHeaderRowStyles = stylesFactory(() => {
-  return {
-    layout: css`
-      display: flex;
-      align-items: center;
-      margin-bottom: 4px;
-      > * {
-        margin-left: 4px;
-        margin-bottom: 0;
-        height: 100%;
-        &:first-child,
-        &:last-child {
-          margin-left: 0;
-        }
-      }
-    `,
+const headerRowLayout = css`
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+  > * {
+    margin-left: 4px;
+    margin-bottom: 0;
+    height: 100%;
+    &:first-child,
+    &:last-child {
+      margin-left: 0;
+    }
   }
-})
+`
 
-const CustomHeaderRow: React.FC<CustomHeaderRowProps> = ({
-  header,
-  onBlur,
-  onChange,
-  onRemove,
-  onReset,
-}) => {
-  const styles = getCustomHeaderRowStyles()
+const CustomHeaderRow: React.FC<CustomHeaderRowProps> = ({ header, onBlur, onChange, onRemove, onReset }) => {
   return (
-    <div className={styles.layout}>
-      <FormField
-        label='Header'
-        name='name'
-        placeholder='X-Custom-Header'
-        labelWidth={5}
-        value={header.name || ''}
-        onChange={e => onChange({ ...header, name: e.target.value })}
-        onBlur={onBlur}
-      />
-      <SecretFormField
-        label='Value'
-        aria-label='Value'
-        name='value'
-        isConfigured={header.configured}
-        value={header.value}
-        labelWidth={5}
-        inputWidth={header.configured ? 11 : 12}
-        placeholder='Header Value'
-        onReset={() => onReset(header.id)}
-        onChange={e => onChange({ ...header, value: e.target.value })}
-        onBlur={onBlur}
-      />
+    <div className={headerRowLayout}>
+      <InlineField label='Header' labelWidth={5} grow>
+        <Input
+          value={header.name || ''}
+          placeholder='X-Custom-Header'
+          onChange={e => onChange({ ...header, name: e.currentTarget.value })}
+          onBlur={onBlur}
+        />
+      </InlineField>
+      <InlineField label='Value' labelWidth={5} grow>
+        <SecretInput
+          isConfigured={header.configured}
+          value={header.value}
+          width={header.configured ? 11 : 12}
+          placeholder='Header Value'
+          onReset={() => onReset(header.id)}
+          onChange={e => onChange({ ...header, value: e.currentTarget.value })}
+          onBlur={onBlur}
+        />
+      </InlineField>
       <Button
         type='button'
         aria-label='Remove header'
@@ -105,8 +89,7 @@ export class CustomHeadersSettings extends PureComponent<Props, State> {
 
   constructor(props: Props) {
     super(props)
-    const { jsonData, secureJsonData, secureJsonFields } =
-      this.props.dataSourceConfig
+    const { jsonData, secureJsonData, secureJsonFields } = this.props.dataSourceConfig
     this.state = {
       headers: Object.keys(jsonData)
         .sort()
@@ -116,10 +99,7 @@ export class CustomHeadersSettings extends PureComponent<Props, State> {
             id: uniqueId(),
             name: jsonData[key],
             value: secureJsonData !== undefined ? secureJsonData[key] : '',
-            configured:
-              (secureJsonFields &&
-                secureJsonFields[`headerValue${index + 1}`]) ||
-              false,
+            configured: (secureJsonFields && secureJsonFields[`headerValue${index + 1}`]) || false,
           }
         }),
     }
@@ -130,9 +110,7 @@ export class CustomHeadersSettings extends PureComponent<Props, State> {
 
     // we remove every headerName* field
     const newJsonData = Object.fromEntries(
-      Object.entries(this.props.dataSourceConfig.jsonData).filter(
-        ([key]) => !key.startsWith('headerName'),
-      ),
+      Object.entries(this.props.dataSourceConfig.jsonData).filter(([key]) => !key.startsWith('headerName')),
     )
 
     // we remove every headerValue* field
@@ -160,10 +138,7 @@ export class CustomHeadersSettings extends PureComponent<Props, State> {
   onHeaderAdd = () => {
     this.setState(prevState => {
       return {
-        headers: [
-          ...prevState.headers,
-          { id: uniqueId(), name: '', value: '', configured: false },
-        ],
+        headers: [...prevState.headers, { id: uniqueId(), name: '', value: '', configured: false }],
       }
     })
   }

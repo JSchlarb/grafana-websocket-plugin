@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-  ArrayVector,
   DataFrame,
   DataQueryRequest,
   DataQueryResponse,
@@ -18,22 +16,38 @@ import { Observable } from 'rxjs'
 import { map } from 'rxjs/operators'
 import { DataSourceOptions, Query, QueryField } from './types'
 
-export class DataSource extends DataSourceWithBackend<
-  Query,
-  DataSourceOptions
-> {
+const cleanChannelPath = (p: string) => p.replace(/\/+/g, '/').replace(/\/$/, '').trim()
+
+const buildChannelPath = (path: string | undefined, refId: string) => {
+  const base = cleanChannelPath(path && path.trim() !== '' ? path : '.')
+  if (base === '' || base === '.') {
+    return refId
+  }
+  if (base === '/') {
+    return `/${refId}`
+  }
+  return `${base}/${refId}`
+}
+
+export class DataSource extends DataSourceWithBackend<Query, DataSourceOptions> {
   constructor(instanceSettings: DataSourceInstanceSettings<DataSourceOptions>) {
     super(instanceSettings)
   }
 
   query = (options: DataQueryRequest<Query>): Observable<DataQueryResponse> => {
-    const { range, scopedVars, panelId, dashboardId, targets } = options
+    const { range, scopedVars, panelId, dashboardUID, targets } = options
     const replaceWithVars = replace(scopedVars, range)
 
     const newOptions = Object.assign({}, options)
-    newOptions.targets = newOptions.targets.map(({ path, ...rest }) => ({
+    newOptions.targets = newOptions.targets.map(({ path, queryParams, ...rest }) => ({
       ...rest,
       path: replaceWithVars(path),
+      queryParams: Object.fromEntries(
+        (Array.isArray(queryParams) ? queryParams : Object.entries(queryParams || {})).map(([k, v]) => [
+          replaceWithVars(k),
+          replaceWithVars(v),
+        ]),
+      ),
     }))
 
     const result = super.query(newOptions)
@@ -41,52 +55,47 @@ export class DataSource extends DataSourceWithBackend<
 
     return result.pipe(
       map(event => {
+        if (!event.data?.length || !event.data[0]?.fields) {
+          return event
+        }
         if (event.state === 'Streaming') {
           const eventChannel = event.data[0].meta?.channel
 
           const newFrames = queries
             .filter(query => {
               const queryChannel = replaceWithVars(
-                `ds/${query.datasource?.uid}/${query?.path || '.'}`,
+                `ds/${query.datasource?.uid}/${buildChannelPath(query?.path, query.refId)}`,
               )
               return queryChannel === eventChannel
             })
-            .map(query =>
-              this.transformFrames(event.data[0], query, scopedVars, range),
-            )
+            .map(query => this.transformFrames(event.data[0], query, scopedVars, range))
 
-          const key = `${dashboardId}/${panelId}/${eventChannel}`
+          const key = `${dashboardUID}/${panelId}/${eventChannel}`
           const eventBindingKey = key || event.key
 
-          const errors = newFrames
-            .filter(f => !!f.meta?.custom)
-            .map(frame => frame.meta?.custom)
+          const errors = newFrames.filter(f => !!f.meta?.custom).map(frame => frame.meta?.custom)
 
           const errorMsg = errors.length
             ? `Some queries returned an error:
-              ${errors
-                .map(error => `Query ${error?.refId} - ${error?.error}`)
-                .join('\n')}`
+              ${errors.map(error => `Query ${error?.refId} - ${error?.error}`).join('\n')}`
             : undefined
 
-          const newEvent = {
+          return {
             ...event,
             data: newFrames,
             key: queries.length > 1 ? eventBindingKey : event.key,
-            state: LoadingState.Streaming,
-            error: errorMsg
-              ? {
-                  message: errorMsg
-                    ? 'Streaming error: click to see details'
-                    : undefined,
-                  data: {
+            state: errorMsg ? LoadingState.Error : LoadingState.Streaming,
+            errors: errorMsg
+              ? [
+                  {
                     message: errorMsg,
+                    data: {
+                      message: errorMsg,
+                    },
                   },
-                }
+                ]
               : undefined,
           }
-
-          return newEvent
         }
 
         return event
@@ -94,13 +103,11 @@ export class DataSource extends DataSourceWithBackend<
     )
   }
 
-  transformFrames = (
-    eventFrame: DataFrame,
-    query: Query,
-    scopedVars: ScopedVars,
-    range: TimeRange,
-  ): DataFrame => {
+  transformFrames = (eventFrame: DataFrame, query: Query, scopedVars: ScopedVars, range: TimeRange): DataFrame => {
     const { refId } = query
+    if (!eventFrame.fields) {
+      return { ...eventFrame, refId, fields: [] }
+    }
     if (query?.fields?.length === 0) {
       return { ...eventFrame, refId }
     }
@@ -123,8 +130,7 @@ export class DataSource extends DataSourceWithBackend<
       .map(field => this.transformFields(field, scopedVars, range, eventValues))
 
     if (eventFields.find(field => field.name === 'error')) {
-      const errorMsg = eventFields.find(field => field.name === 'error')
-        ?.values[0]
+      const errorMsg = eventFields.find(field => field.name === 'error')?.values[0]
 
       return {
         ...eventFrame,
@@ -168,7 +174,7 @@ export class DataSource extends DataSourceWithBackend<
     return {
       name: replaceWithVars(field.name ?? '') || paths[paths.length - 1],
       type: propertyType,
-      values: new ArrayVector(typedValues),
+      values: typedValues,
       config: {},
     }
   }

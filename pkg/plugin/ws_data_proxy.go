@@ -3,9 +3,11 @@ package plugin
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -22,15 +24,19 @@ type wsDataProxy struct {
 	done          chan bool
 	wsDataSource  *WebSocketDataSource
 	readingErrors chan error
+	path          string
+	queryParams   map[string]string
 }
 
-func NewWsDataProxy(req *backend.RunStreamRequest, sender *backend.StreamSender, ds *WebSocketDataSource) (*wsDataProxy, error) {
+func NewWsDataProxy(req *backend.RunStreamRequest, sender *backend.StreamSender, ds *WebSocketDataSource, cfg channelConfig) (*wsDataProxy, error) {
 	wsDataProxy := &wsDataProxy{
 		msgRead:       make(chan []byte),
 		sender:        sender,
 		done:          make(chan bool, 1),
 		wsDataSource:  ds,
 		readingErrors: make(chan error),
+		path:          cfg.path,
+		queryParams:   cfg.queryParams,
 	}
 
 	url, err := wsDataProxy.encodeURL(req)
@@ -97,12 +103,6 @@ func (wsdp *wsDataProxy) proxyMessage() {
 
 // encodeURL is hard coded with some variables like scheme and x-api-key but will be definetly refactored after changes in the config editor
 func (wsdp *wsDataProxy) encodeURL(req *backend.RunStreamRequest) (string, error) {
-	var reqJsonData map[string]interface{}
-
-	if err := json.Unmarshal(req.PluginContext.DataSourceInstanceSettings.JSONData, &reqJsonData); err != nil {
-		return "", fmt.Errorf("failed to read JSON Data Source Instance Settings: %s", err.Error())
-	}
-
 	host := req.PluginContext.DataSourceInstanceSettings.URL
 
 	wsUrl, err := url.Parse(host)
@@ -110,11 +110,11 @@ func (wsdp *wsDataProxy) encodeURL(req *backend.RunStreamRequest) (string, error
 		return "", fmt.Errorf("failed to parse host string from the Plugin's Config Editor: %s", err.Error())
 	}
 
-	wsUrl.Path = path.Join(wsUrl.Path, req.Path)
+	wsUrl.Path = path.Join(wsUrl.Path, wsdp.path)
 
 	queryParams := url.Values{}
 	// add all query parameters to the URL
-	for qpName, qpValue := range wsdp.wsDataSource.customQueryParameters {
+	for qpName, qpValue := range wsdp.queryParams {
 		queryParams.Add(qpName, qpValue)
 	}
 	wsUrl.RawQuery = queryParams.Encode()
@@ -130,9 +130,22 @@ func (wsdp *wsDataProxy) wsConnect() (*websocket.Conn, error) {
 		customHeaders.Add(headerName, headerValue)
 	}
 
-	c, _, err := websocket.DefaultDialer.Dial(wsdp.wsUrl, customHeaders)
+	c, resp, err := websocket.DefaultDialer.Dial(wsdp.wsUrl, customHeaders)
 	if err != nil {
-		return nil, err
+		msg := err.Error()
+		if resp != nil {
+			var body string
+			if resp.Body != nil {
+				defer resp.Body.Close()
+				b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+				body = strings.TrimSpace(string(b))
+			}
+			msg = fmt.Sprintf("%s (status %d %s)", msg, resp.StatusCode, resp.Status)
+			if body != "" {
+				msg = fmt.Sprintf("%s: %s", msg, body)
+			}
+		}
+		return nil, fmt.Errorf("websocket dial failed: %s", msg)
 	}
 	log.DefaultLogger.Info("Ws Connect", "connected to", wsdp.wsUrl)
 

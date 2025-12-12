@@ -1,6 +1,6 @@
 # WebSocket Data Source for Grafana
 
-A WebSocket data source plugin for realtime data updates in [Grafana](https://grafana.com) Dashboards. 
+A WebSocket data source plugin for realtime data updates in [Grafana](https://grafana.com) Dashboards.
 
 # Plugin Purpose
 
@@ -29,6 +29,7 @@ Here are the steps to configure and use the WebSocket Data Source Plugin in Graf
    - Add Query Parameters and Custom Headers if necessary (consult your WebSocket API data source). This example shows the use of an API key.
 
 3. Add a panel to the Grafana Dashboard to begin seeing data
+
    - Click `+` in the left sidebar. Choose "Dashboard" --> "Add a new panel"
    - Select `WebSocket API` as Data Source in the select drop-down
    - In the bottom left, set the "Fields" tab to `$`

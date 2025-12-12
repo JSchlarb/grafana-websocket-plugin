@@ -1,5 +1,5 @@
 import { FieldType, SelectableValue } from '@grafana/data'
-import { Icon, InlineField, InlineFieldRow, Select } from '@grafana/ui'
+import { Combobox, Icon, InlineField, InlineFieldRow } from '@grafana/ui'
 import React from 'react'
 import { QueryField, QueryLanguage } from 'types'
 import { AliasField } from './fields/AliasField'
@@ -13,19 +13,12 @@ interface Props {
 
 export const FieldEditor = ({ value = [], onChange, limit }: Props) => {
   const onChangePath = (i: number) => (e: string) => {
-    onChange(
-      value.map((field, n) => (i === n ? { ...value[i], jsonPath: e } : field)),
-    )
+    onChange(value.map((field, n) => (i === n ? { ...value[i], jsonPath: e } : field)))
   }
 
-  const onLanguageChange =
-    (i: number) => (e: SelectableValue<QueryLanguage>) => {
-      onChange(
-        value.map((field, n) =>
-          i === n ? { ...value[i], language: e.value } : field,
-        ),
-      )
-    }
+  const onLanguageChange = (i: number) => (e: SelectableValue<QueryLanguage>) => {
+    onChange(value.map((field, n) => (i === n ? { ...value[i], language: e.value } : field)))
+  }
   const onChangeType = (i: number) => (e: SelectableValue<string>) => {
     onChange(
       value.map((field, n) =>
@@ -39,21 +32,14 @@ export const FieldEditor = ({ value = [], onChange, limit }: Props) => {
     )
   }
   const onAliasChange = (i: number) => (e: string) => {
-    onChange(
-      value.map((field, n) => (i === n ? { ...value[i], name: e } : field)),
-    )
+    onChange(value.map((field, n) => (i === n ? { ...value[i], name: e } : field)))
   }
 
-  const addField =
-    (i: number, defaults?: { language: QueryLanguage }) => () => {
-      if (!limit || value.length < limit) {
-        onChange([
-          ...value.slice(0, i + 1),
-          { name: '', jsonPath: '', ...defaults },
-          ...value.slice(i + 1),
-        ])
-      }
+  const addField = (i: number, defaults?: { language: QueryLanguage }) => () => {
+    if (!limit || value.length < limit) {
+      onChange([...value.slice(0, i + 1), { name: '', jsonPath: '', ...defaults }, ...value.slice(i + 1)])
     }
+  }
   const removeField = (i: number) => () => {
     onChange([...value.slice(0, i), ...value.slice(i + 1)])
   }
@@ -67,11 +53,7 @@ export const FieldEditor = ({ value = [], onChange, limit }: Props) => {
             tooltip={
               <div>
                 A{' '}
-                <a
-                  href='https://goessner.net/articles/JsonPath/'
-                  target='_blank'
-                  rel='noreferrer'
-                >
+                <a href='https://goessner.net/articles/JsonPath/' target='_blank' rel='noreferrer'>
                   JSON Path
                 </a>{' '}
                 query that selects one or more values from a JSON object.
@@ -79,24 +61,18 @@ export const FieldEditor = ({ value = [], onChange, limit }: Props) => {
             }
             grow
           >
-            <JsonPathField
-              onChange={onChangePath(index)}
-              jsonPath={field.jsonPath}
-            />
+            <JsonPathField onChange={onChangePath(index)} jsonPath={field.jsonPath} />
           </InlineField>
           <InlineField disabled>
-            <Select
+            <Combobox
               width={14}
               value={'jsonpath'}
               onChange={onLanguageChange(index)}
               options={[{ label: 'JSONPath', value: 'jsonpath' }]}
             />
           </InlineField>
-          <InlineField
-            label='Type'
-            tooltip='If Auto is set, the JSON property type is used to detect the field type.'
-          >
-            <Select
+          <InlineField label='Type' tooltip='If Auto is set, the JSON property type is used to detect the field type.'>
+            <Combobox
               value={field.type ?? 'auto'}
               width={12}
               onChange={onChangeType(index)}
@@ -109,10 +85,7 @@ export const FieldEditor = ({ value = [], onChange, limit }: Props) => {
               ]}
             />
           </InlineField>
-          <InlineField
-            label='Alias'
-            tooltip='If left blank, the field uses the name of the queried element.'
-          >
+          <InlineField label='Alias' tooltip='If left blank, the field uses the name of the queried element.'>
             <AliasField onChange={onAliasChange(index)} alias={field.name} />
           </InlineField>
 

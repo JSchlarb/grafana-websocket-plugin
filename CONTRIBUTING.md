@@ -161,7 +161,7 @@ This is a starting point for building Grafana Data Source Backend Plugins
 
 3. Node.js
 
-   Node.js can be installed using a package manager with the command `sudo apt install nodejs` but often times this is an older version. We need to run `yarn`, which depends on version 14 or greater of Node.js.
+   Node.js can be installed using a package manager with the command `sudo apt install nodejs` but often times this is an older version. We need to run npm scripts, which depend on Node.js 22 or greater.
 
    Display your Node version using `node -v`. To move to a newer version, [install the Node Version Manager](https://github.com/nvm-sh/nvm#install--update-script) (`nvm`) and use it to install and switch to a newer version:
 
@@ -171,13 +171,9 @@ This is a starting point for building Grafana Data Source Backend Plugins
    node -v
    ```
 
-4. Yarn
+4. npm
 
-   Install the Yarn package manager:
-
-   ```bash
-   npm install yarn --global
-   ```
+   This project uses npm (see `package.json` scripts). No separate package manager is required.
 
 ### Setup Plugin Directory
 
@@ -201,39 +197,26 @@ This is a starting point for building Grafana Data Source Backend Plugins
 
    ```bash
    cd path/to/your/clone/grafana-websocket-plugin
-   yarn install
+   npm install
    ```
 
-2. Build plugin in development mode or run in watch mode
+2. Build plugin in development mode (watch mode)
 
    ```bash
-   yarn dev
-   ```
-
-   or
-
-   ```bash
-   yarn watch
+   npm run dev
    ```
 
 3. Build plugin in production mode
 
    ```bash
-   yarn build
+   npm run build
    ```
-
-   - **Yarn Error**: If yarn throws `opensslErrorStack`, export this value in the terminal and build yarn again:
-
-     ```bash
-     export NODE_OPTIONS=--openssl-legacy-provider
-     ```
 
 ### Backend
 
-1. Update [Grafana plugin SDK for Go](https://grafana.com/docs/grafana/latest/developers/plugins/backend/grafana-plugin-sdk-for-go/) dependency to the latest minor version:
+1. Ensure Go dependencies are up to date:
 
    ```bash
-   go get -u github.com/grafana/grafana-plugin-sdk-go
    go mod tidy
    ```
 
@@ -251,14 +234,16 @@ This is a starting point for building Grafana Data Source Backend Plugins
 
 ### Sign the Grafana plugin (Golioth Maintainers)
 
-In case you have a Grafana API KEY, you can sign the plugin locally.
+In case you have a Grafana access policy token, you can sign the plugin locally.
 
-Set the GRAFANA_API_KEY:
+Set the `GRAFANA_ACCESS_POLICY_TOKEN`:
+
 ```
-$ export GRAFANA_API_KEY=<api-key-here>
+$ export GRAFANA_ACCESS_POLICY_TOKEN=<token-here>
 ```
 
 Sign the plugin:
+
 ```
 $ npm run sign
 ```
@@ -268,30 +253,32 @@ $ npm run sign
 1. Start the docker container:
 
 - Run Grafana able to execute **unsigned** plugins
-   ```bash
-   $ docker run \
-      --network="host" -e "GF_LOG_MODE=console file" \
-      -e "GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=golioth-websocket-datasource" \
-      -p 3000:3000 \
-      -v path/to/your/clone:/var/lib/grafana/plugins \
-      --name=grafana grafana/grafana
-   ```
+
+  ```bash
+  $ docker run \
+     --network="host" -e "GF_LOG_MODE=console file" \
+     -e "GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=golioth-websocket-datasource" \
+     -p 3000:3000 \
+     -v path/to/your/clone:/var/lib/grafana/plugins \
+     --name=grafana grafana/grafana
+  ```
 
 - Run Grafana only **for signed** plugins
-   ```bash
-   $ docker run \
-      --network="host" -e "GF_LOG_MODE=console file" \
-      -p 3000:3000 \
-      -v path/to/your/clone:/var/lib/grafana/plugins \
-      --name=grafana grafana/grafana
-   ```
 
-   - Notes regarding Docker:
-     - Restart container after first run: `docker start grafana`
-     - Restart container after first run as daemon: `docker start grafana`
-     - Restart container and show the output: `docker start grafana -a`
-     - Stop the container when running as daemon: `docker stop grafana`
-     - Remove the container from your system: `docker rm -fv grafana`
+  ```bash
+  $ docker run \
+     --network="host" -e "GF_LOG_MODE=console file" \
+     -p 3000:3000 \
+     -v path/to/your/clone:/var/lib/grafana/plugins \
+     --name=grafana grafana/grafana
+  ```
+
+  - Notes regarding Docker:
+    - Restart container after first run: `docker start grafana`
+    - Restart container after first run as daemon: `docker start grafana`
+    - Restart container and show the output: `docker start grafana -a`
+    - Stop the container when running as daemon: `docker stop grafana`
+    - Remove the container from your system: `docker rm -fv grafana`
 
 2. Load the GUI in your browser:
    - http://localhost:3000
@@ -382,8 +369,6 @@ $ plugincheck ./golioth-websocket-datasource.zip || true
 ```
 
 You'll need verify each error or warning and solve them before pushing the plugin.
-
-
 
 # Learn more <a name="learn-more" id="learn-more"></a>
 
